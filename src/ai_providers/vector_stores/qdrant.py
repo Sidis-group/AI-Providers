@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
 import uuid
 from collections import Counter
@@ -21,6 +22,20 @@ except ImportError:  # pragma: no cover - env without [vector-qdrant]
 _TOKEN_RE = re.compile(r"[A-Za-z0-9_]+")
 
 
+def _stable_token_index(token: str) -> int:
+    """Deterministic 31-bit index for a token.
+
+    CPython randomizes ``hash(str)`` per-process (PYTHONHASHSEED), which would
+    make the same token map to different sparse-vector indices in different
+    processes — silently breaking keyword/hybrid retrieval across upserts and
+    queries that happen in different processes (the standard Qdrant deployment
+    pattern). blake2b gives us a stable hash without external deps.
+    """
+
+    digest = hashlib.blake2b(token.encode("utf-8"), digest_size=4).digest()
+    return int.from_bytes(digest, "big") & 0x7FFFFFFF
+
+
 def _bow(text: str) -> dict[int, float]:
     """Tiny built-in BoW sparse vector for keyword/hybrid search.
 
@@ -32,9 +47,7 @@ def _bow(text: str) -> dict[int, float]:
     counts = Counter(tokens)
     out: dict[int, float] = {}
     for token, count in counts.items():
-        # Stable hashing into 32-bit unsigned space.
-        idx = hash(token) & 0x7FFFFFFF
-        out[idx] = float(count)
+        out[_stable_token_index(token)] = float(count)
     return out
 
 

@@ -16,6 +16,11 @@ except ImportError:  # pragma: no cover - env without [vector-chroma]
     chromadb = None  # type: ignore[assignment]
 
 
+# Sentinel key used to satisfy Chroma's "non-empty metadata" requirement when
+# a doc has no metadata. Namespaced so it can't collide with user keys.
+_SENTINEL_KEY = "__ai_providers_metadata_sentinel__"
+
+
 class ChromaStore:
     """Chroma backend. Supports semantic + keyword (via where_document); no native hybrid."""
 
@@ -59,7 +64,7 @@ class ChromaStore:
         metadatas: list[dict[str, Any]] | None
         if has_any_metadata:
             metadatas = [
-                dict(d.metadata) if d.metadata else {"_id": d.id} for d in docs
+                dict(d.metadata) if d.metadata else {_SENTINEL_KEY: True} for d in docs
             ]
         else:
             metadatas = None
@@ -123,9 +128,10 @@ class ChromaStore:
             distance = distances[i] if i < len(distances) else 0.0
             score = 1.0 - distance  # cosine distance → similarity
             md = metadatas[i] if i < len(metadatas) else None
-            # Strip the sentinel we may have inserted in upsert().
+            # Strip our namespaced sentinel (see upsert); preserve everything else
+            # including any user key that happens to be `_id`.
             if isinstance(md, dict):
-                md = {k: v for k, v in md.items() if k != "_id"}
+                md = {k: v for k, v in md.items() if k != _SENTINEL_KEY}
             else:
                 md = {}
             doc = Document(

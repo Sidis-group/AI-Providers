@@ -65,6 +65,11 @@ class FakeSyncProvider(BaseProvider):
         FakeSyncProvider.calls.append(
             FakeCall(messages=list(messages), tools=tools, extra_params=dict(extra_params or {}))
         )
+        if FakeSyncProvider.config.raise_factory is not None:
+            FakeSyncProvider.raise_count += 1
+            exc = FakeSyncProvider.config.raise_factory(FakeSyncProvider.raise_count)
+            if exc is not None:
+                raise exc
         yield from FakeSyncProvider.config.stream_chunks
 
 

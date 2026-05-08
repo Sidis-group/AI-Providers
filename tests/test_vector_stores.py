@@ -121,6 +121,44 @@ def test_chroma_semantic_query_with_real_backend():
     assert "2" not in ids or "1" in ids or "3" in ids
 
 
+def test_chroma_preserves_metadata_for_mixed_docs():
+    """Regression: when some docs have metadata and others don't, tagged docs
+    must NOT lose their metadata at upsert/query."""
+
+    pytest.importorskip("chromadb")
+    from ai_providers import ChromaStore
+
+    backend = ChromaStore(collection="t-mixed-metadata")
+    store = VectorStore(backend=backend)
+    store.upsert(
+        [
+            Document(id="a", text="apples are red", metadata={"category": "fruit"}),
+            Document(id="b", text="bananas are yellow"),  # no metadata
+            Document(id="c", text="carrots are orange", metadata={"category": "veg"}),
+        ]
+    )
+    # Filtered query — only docs with category=fruit should match.
+    results = store.query("apples", top_k=5, where={"category": "fruit"})
+    assert {r.document.id for r in results} == {"a"}
+    # And the stored metadata for `a` survived round-trip.
+    assert results[0].document.metadata.get("category") == "fruit"
+
+
+def test_chroma_user_id_metadata_key_preserved():
+    """User metadata containing key `_id` must NOT be stripped (sentinel is namespaced)."""
+
+    pytest.importorskip("chromadb")
+    from ai_providers import ChromaStore
+
+    backend = ChromaStore(collection="t-user-id-key")
+    store = VectorStore(backend=backend)
+    store.upsert(
+        [Document(id="x", text="something", metadata={"_id": "user-supplied"})]
+    )
+    results = store.query("something", top_k=1)
+    assert results[0].document.metadata.get("_id") == "user-supplied"
+
+
 def test_chroma_hybrid_raises_not_supported():
     pytest.importorskip("chromadb")
     from ai_providers import ChromaStore

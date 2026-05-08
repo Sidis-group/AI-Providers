@@ -11,7 +11,6 @@ from tenacity import (
     retry_if_exception,
     stop_after_attempt,
     wait_exponential,
-    wait_random_exponential,
 )
 
 from .exceptions import (
@@ -40,12 +39,6 @@ def _should_retry(exc: BaseException) -> bool:
         return False
     # Network-layer exceptions: retry conservatively.
     return isinstance(exc, ConnectionError)
-
-
-def _wait_strategy(initial: float, maximum: float):
-    return wait_random_exponential(multiplier=initial, max=maximum) | wait_exponential(
-        multiplier=initial, max=maximum
-    )
 
 
 def call_with_retry(

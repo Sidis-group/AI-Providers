@@ -170,3 +170,35 @@ def test_streaming_yields_chunks():
     client = AIClient(provider="fake", model="m", api_key="x")
     deltas = [c.delta for c in client.stream([{"role": "user", "content": "hi"}])]
     assert "".join(deltas) == "hello"
+
+
+def test_streaming_emits_on_response_even_without_final_usage():
+    """Stream that ends without `usage` in any chunk must still trigger on_response."""
+
+    chunks = [StreamChunk(delta="hi"), StreamChunk(delta="", finish_reason="stop")]
+    FakeSyncProvider.config = FakeProviderConfig(stream_chunks=chunks)
+    metrics = MetricsMiddleware()
+    client = AIClient(provider="fake", model="m", api_key="x", middleware=[metrics])
+    list(client.stream([{"role": "user", "content": "x"}]))  # consume
+    assert metrics.requests == 1
+    assert metrics.responses == 1
+    assert metrics.errors == 0
+
+
+def test_streaming_emits_on_error_and_skips_response():
+    """When the stream raises, on_error fires and on_response does NOT."""
+
+    def factory(_n: int):
+        return RuntimeError("boom mid-stream")
+
+    FakeSyncProvider.config = FakeProviderConfig(raise_factory=factory)
+    metrics = MetricsMiddleware()
+    client = AIClient(
+        provider="fake", model="m", api_key="x", middleware=[metrics], max_retries=0
+    )
+    # The fake provider raises in stream() before yielding — that's fine for this assertion.
+    with pytest.raises(RuntimeError):
+        list(client.stream([{"role": "user", "content": "x"}]))
+    assert metrics.requests == 1
+    assert metrics.errors == 1
+    assert metrics.responses == 0
