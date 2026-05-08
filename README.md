@@ -71,6 +71,51 @@ pip install "ai-providers[openai,vector-qdrant] @ git+..."
 Якщо викликати провайдер, чий extra не встановлений — отримаєте
 `ProviderNotInstalledError` з підказкою, яку команду виконати.
 
+### Оновлення до нової версії
+
+Версіонування — [SemVer](https://semver.org/lang/uk/). Зміни описані у
+[CHANGELOG.md](CHANGELOG.md). Кожен реліз отримує git-тег `vX.Y.Z`.
+
+**Через `uv`** (рекомендовано):
+
+```bash
+# Якщо ставили без lockfile (uv pip):
+uv pip install --upgrade "ai-providers[openai,anthropic] @ git+https://github.com/Sidis-group/AI-Providers.git"
+
+# Якщо проєкт використовує uv.lock (uv add / uv sync):
+uv lock --upgrade-package ai-providers
+uv sync
+```
+
+**Через `pip`:**
+
+```bash
+pip install --upgrade --force-reinstall "ai-providers[openai,anthropic] @ git+https://github.com/Sidis-group/AI-Providers.git"
+```
+
+> `--force-reinstall` потрібен, якщо ви ставили без явного pin на git-commit:
+> pip кешує git-залежності за version-рядком, і якщо ми забули bump — він
+> побачить ту саму версію і пропустить update. У нас bump зроблено, але
+> прапорець не зашкодить.
+
+**Pin на конкретну версію** (надійніше для production):
+
+```bash
+pip install "ai-providers[openai,anthropic] @ git+https://github.com/Sidis-group/AI-Providers.git@v0.1.1"
+```
+
+Або на конкретний commit:
+
+```bash
+pip install "ai-providers[openai,anthropic] @ git+https://github.com/Sidis-group/AI-Providers.git@<sha>"
+```
+
+**Перевірити встановлену версію:**
+
+```bash
+python -c "import ai_providers; print(ai_providers.__version__)"
+```
+
 ## Швидкий старт
 
 ```python

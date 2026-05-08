@@ -1,6 +1,6 @@
 [project]
 name = "ai-providers"
-version = "0.1.0"
+version = "0.1.1"
 description = "Unified Python interface for AI providers (OpenAI, Anthropic) with embeddings, vector stores, caching, retries and middleware."
 readme = "README.md"
 requires-python = ">=3.11"
